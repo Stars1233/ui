@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { twMerge as merge } from 'tailwind-merge';
-
   import { beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/state';
 
   import EventSummaryTable from '$lib/components/event/event-summary-table.svelte';
   import EventTypeFilter from '$lib/components/lines-and-dots/event-type-filter.svelte';
+  import WorkflowError from '$lib/components/lines-and-dots/workflow-error.svelte';
   import DownloadEventHistoryModal from '$lib/components/workflow/download-event-history-modal.svelte';
   import InputAndResults from '$lib/components/workflow/input-and-results.svelte';
+  import WorkflowCallbacks from '$lib/components/workflow/workflow-callbacks.svelte';
   import TabButton from '$lib/holocene/tab-buttons/tab-button.svelte';
   import TabButtons from '$lib/holocene/tab-buttons/tab-buttons.svelte';
   import ToggleButton from '$lib/holocene/toggle-button/toggle-button.svelte';
@@ -24,6 +24,7 @@
     minimizeEventView,
   } from '$lib/stores/event-view';
   import {
+    currentEventHistory,
     filteredEventHistory,
     fullEventHistory,
     pauseLiveUpdates,
@@ -35,6 +36,7 @@
     parseEventFilterParams,
     updateEventFilterParams,
   } from '$lib/utilities/event-filter-params';
+  import { getWorkflowTaskFailedEvent } from '$lib/utilities/get-workflow-task-failed-event';
 
   const { namespace } = $derived(page.params);
   const { workflow } = $derived($workflowRun);
@@ -67,6 +69,10 @@
       pendingActivities,
       pendingNexusOperations,
     ),
+  );
+
+  const workflowTaskFailedError = $derived(
+    getWorkflowTaskFailedEvent($currentEventHistory, 'ascending'),
   );
 
   let groups = $derived(
@@ -130,18 +136,26 @@
 </script>
 
 <InputAndResults />
+<div class="flex flex-col gap-2">
+  {#if workflowTaskFailedError}
+    <WorkflowError
+      error={workflowTaskFailedError}
+      pendingTask={workflow?.pendingWorkflowTask}
+    />
+  {/if}
+  {#if workflow?.callbacks?.length}
+    <WorkflowCallbacks callbacks={workflow.callbacks} />
+  {/if}
+</div>
 <div class="relative">
   <div
-    class={merge(
-      'surface-background flex flex-wrap items-center justify-between gap-2 border-b border-subtle xl:gap-8',
-      !$minimizeEventView && 'sticky top-0 z-30 md:top-12',
-    )}
+    class="surface-background sticky top-0 z-[11] flex flex-wrap-reverse items-center justify-between gap-2 border-b border-subtle md:top-12 md:pt-2 xl:gap-8"
   >
-    <div class="items-bottom flex gap-4">
+    <div class="items-bottom flex gap-4 pt-2">
       <h2>
         {translate('workflows.history-tab')}
       </h2>
-      <TabButtons class="relative top-[2px]">
+      <TabButtons class="relative">
         <TabButton
           active={$eventViewType === 'feed'}
           data-testid="feed"
